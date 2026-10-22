@@ -1,0 +1,319 @@
+{
+  "model": "C:\\Users\\USER\\Desktop\\bridgesign-main\\models\\sign_model_v2.pkl",
+  "status": "interim_under_target",
+  "target_override": "--allow-under-target",
+  "training_timestamp": "2026-10-08T20:15:57+02:00",
+  "normal_class_target": 300,
+  "priority_class_target": 500,
+  "total_valid_samples": 1880,
+  "samples_per_class": {
+    "A": 60,
+    "B": 100,
+    "C": 60,
+    "D": 60,
+    "E": 60,
+    "F": 60,
+    "G": 60,
+    "H": 60,
+    "I": 60,
+    "J": 60,
+    "K": 60,
+    "L": 60,
+    "M": 100,
+    "N": 60,
+    "O": 60,
+    "P": 100,
+    "Q": 100,
+    "R": 60,
+    "S": 100,
+    "T": 60,
+    "U": 100,
+    "V": 100,
+    "W": 60,
+    "X": 60,
+    "Y": 60,
+    "Z": 100
+  },
+  "minimum_class_count": 60,
+  "classes_below_target": {
+    "A": {
+      "observed": 60,
+      "required": 300,
+      "target_achieved_percent": 20.0
+    },
+    "B": {
+      "observed": 100,
+      "required": 500,
+      "target_achieved_percent": 20.0
+    },
+    "C": {
+      "observed": 60,
+      "required": 300,
+      "target_achieved_percent": 20.0
+    },
+    "D": {
+      "observed": 60,
+      "required": 300,
+      "target_achieved_percent": 20.0
+    },
+    "E": {
+      "observed": 60,
+      "required": 300,
+      "target_achieved_percent": 20.0
+    },
+    "F": {
+      "observed": 60,
+      "required": 300,
+      "target_achieved_percent": 20.0
+    },
+    "G": {
+      "observed": 60,
+      "required": 300,
+      "target_achieved_percent": 20.0
+    },
+    "H": {
+      "observed": 60,
+      "required": 300,
+      "target_achieved_percent": 20.0
+    },
+    "I": {
+      "observed": 60,
+      "required": 300,
+      "target_achieved_percent": 20.0
+    },
+    "J": {
+      "observed": 60,
+      "required": 300,
+      "target_achieved_percent": 20.0
+    },
+    "K": {
+      "observed": 60,
+      "required": 300,
+      "target_achieved_percent": 20.0
+    },
+    "L": {
+      "observed": 60,
+      "required": 300,
+      "target_achieved_percent": 20.0
+    },
+    "M": {
+      "observed": 100,
+      "required": 500,
+      "target_achieved_percent": 20.0
+    },
+    "N": {
+      "observed": 60,
+      "required": 300,
+      "target_achieved_percent": 20.0
+    },
+    "O": {
+      "observed": 60,
+      "required": 300,
+      "target_achieved_percent": 20.0
+    },
+    "P": {
+      "observed": 100,
+      "required": 500,
+      "target_achieved_percent": 20.0
+    },
+    "Q": {
+      "observed": 100,
+      "required": 500,
+      "target_achieved_percent": 20.0
+    },
+    "R": {
+      "observed": 60,
+      "required": 300,
+      "target_achieved_percent": 20.0
+    },
+    "S": {
+      "observed": 100,
+      "required": 500,
+      "target_achieved_percent": 20.0
+    },
+    "T": {
+      "observed": 60,
+      "required": 300,
+      "target_achieved_percent": 20.0
+    },
+    "U": {
+      "observed": 100,
+      "required": 500,
+      "target_achieved_percent": 20.0
+    },
+    "V": {
+      "observed": 100,
+      "required": 500,
+      "target_achieved_percent": 20.0
+    },
+    "W": {
+      "observed": 60,
+      "required": 300,
+      "target_achieved_percent": 20.0
+    },
+    "X": {
+      "observed": 60,
+      "required": 300,
+      "target_achieved_percent": 20.0
+    },
+    "Y": {
+      "observed": 60,
+      "required": 300,
+      "target_achieved_percent": 20.0
+    },
+    "Z": {
+      "observed": 100,
+      "required": 500,
+      "target_achieved_percent": 20.0
+    }
+  },
+  "target_achievement_percent_per_class": {
+    "A": 20.0,
+    "B": 20.0,
+    "C": 20.0,
+    "D": 20.0,
+    "E": 20.0,
+    "F": 20.0,
+    "G": 20.0,
+    "H": 20.0,
+    "I": 20.0,
+    "J": 20.0,
+    "K": 20.0,
+    "L": 20.0,
+    "M": 20.0,
+    "N": 20.0,
+    "O": 20.0,
+    "P": 20.0,
+    "Q": 20.0,
+    "R": 20.0,
+    "S": 20.0,
+    "T": 20.0,
+    "U": 20.0,
+    "V": 20.0,
+    "W": 20.0,
+    "X": 20.0,
+    "Y": 20.0,
+    "Z": 20.0
+  },
+  "overall_target_achieved_percent": 20.0,
+  "dataset_sha256": "82a81f4b7fbd4f42e3e9f6722ef3fe151c0179f366d709bf5ed56a4f4c076a3f",
+  "split_manifest": "C:\\Users\\USER\\Desktop\\bridgesign-main\\reports\\static_a_to_z\\dataset_v2_split.json",
+  "split_strategy": "trainer_faithful_stratified_row_holdout_pre_augmentation",
+  "random_seed": 42,
+  "feature_count": 42,
+  "feature_representation": "existing wrist-normalized 21-point XY, flattened to 42 values",
+  "hyperparameters": {
+    "classifier": "RandomForestClassifier",
+    "n_estimators": 80,
+    "max_depth": 18,
+    "min_samples_leaf": 2,
+    "class_weight": "balanced",
+    "n_jobs": 1,
+    "random_state": 42,
+    "scaler": "StandardScaler"
+  },
+  "augmentation": {
+    "n_copies": 3,
+    "noise_std": 0.015,
+    "mirror_excluded_labels": [
+      "J",
+      "P",
+      "Q",
+      "Z"
+    ],
+    "applied_to": "training split only"
+  },
+  "sample_counts": {
+    "raw_training": 1542,
+    "augmented_training": 19523,
+    "validation": 0,
+    "test_reserved": 338
+  },
+  "training_class_distribution": {
+    "A": 50,
+    "B": 82,
+    "C": 49,
+    "D": 50,
+    "E": 49,
+    "F": 49,
+    "G": 49,
+    "H": 49,
+    "I": 49,
+    "J": 49,
+    "K": 50,
+    "L": 49,
+    "M": 82,
+    "N": 49,
+    "O": 49,
+    "P": 82,
+    "Q": 82,
+    "R": 49,
+    "S": 82,
+    "T": 49,
+    "U": 82,
+    "V": 82,
+    "W": 50,
+    "X": 49,
+    "Y": 49,
+    "Z": 82
+  },
+  "validation_class_distribution": {
+    "A": 0,
+    "B": 0,
+    "C": 0,
+    "D": 0,
+    "E": 0,
+    "F": 0,
+    "G": 0,
+    "H": 0,
+    "I": 0,
+    "J": 0,
+    "K": 0,
+    "L": 0,
+    "M": 0,
+    "N": 0,
+    "O": 0,
+    "P": 0,
+    "Q": 0,
+    "R": 0,
+    "S": 0,
+    "T": 0,
+    "U": 0,
+    "V": 0,
+    "W": 0,
+    "X": 0,
+    "Y": 0,
+    "Z": 0
+  },
+  "test_class_distribution": {
+    "A": 10,
+    "B": 18,
+    "C": 11,
+    "D": 10,
+    "E": 11,
+    "F": 11,
+    "G": 11,
+    "H": 11,
+    "I": 11,
+    "J": 11,
+    "K": 10,
+    "L": 11,
+    "M": 18,
+    "N": 11,
+    "O": 11,
+    "P": 18,
+    "Q": 18,
+    "R": 11,
+    "S": 18,
+    "T": 11,
+    "U": 18,
+    "V": 18,
+    "W": 10,
+    "X": 11,
+    "Y": 11,
+    "Z": 18
+  },
+  "training_time_seconds": 26.9142819000117,
+  "validation_metrics": null,
+  "validation_note": "No separate validation split was available. The held-out test set remains untouched and is used only by the evaluate command."
+}

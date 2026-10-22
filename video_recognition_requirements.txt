@@ -1,0 +1,9 @@
+numpy==1.26.4
+mediapipe==0.10.21
+opencv-contrib-python==4.11.0.86
+torch==2.14.1
+torchvision==0.29.1
+omegaconf==2.3.0
+tqdm==4.67.1
+natsort==8.4.0
+pytorch-lightning==2.5.2

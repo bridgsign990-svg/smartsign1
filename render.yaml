@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: bridgesign
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PORT
+        value: "10000"
+      - key: HOSTNAME
+        value: 0.0.0.0
+      - key: BRIDGESIGN_HOST
+        value: 0.0.0.0
+      - key: BRIDGESIGN_WARM_INFERENCE
+        value: "0"
+      - key: BRIDGESIGN_DATA_DIR
+        value: /tmp/bridgesign-data
+      - key: RENDER
+        value: "true"
+      - key: GUNICORN_THREADS
+        value: "1"
+      - key: GUNICORN_TIMEOUT
+        value: "180"
+      - key: OMP_NUM_THREADS
+        value: "1"
+      - key: OPENBLAS_NUM_THREADS
+        value: "1"
+      - key: MKL_NUM_THREADS
+        value: "1"
+      - key: NUMEXPR_NUM_THREADS
+        value: "1"

@@ -1,0 +1,166 @@
+{
+  "live_like_val_accuracy": {
+    "speed_1": 0.9786931818181818,
+    "speed_1_mirrored": 0.96875,
+    "speed_2": 0.9801136363636364,
+    "speed_2_mirrored": 0.9673295454545454,
+    "speed_3": 0.9758522727272727,
+    "speed_3_mirrored": 0.9630681818181818,
+    "held_letter_poses_read_as_static": 0.9153846153846154
+  },
+  "augmentation": {
+    "speed_range": [
+      0.6,
+      3.0
+    ],
+    "mirror": true,
+    "rotation_deg_std": 8.0,
+    "scale_range": [
+      0.9,
+      1.1
+    ]
+  },
+  "dropped_outlier_samples": 41,
+  "classes": [
+    "AGAIN",
+    "AMBULANCE",
+    "ANGRY",
+    "DANGER",
+    "DOCTOR",
+    "EMERGENCY",
+    "FIRE",
+    "FOOD",
+    "GOODBYE",
+    "HELLO",
+    "HELP",
+    "HOSPITAL",
+    "J",
+    "NO",
+    "PLEASE",
+    "SORRY",
+    "STATIC",
+    "STOP",
+    "THANK_YOU",
+    "WATER",
+    "YES",
+    "Z"
+  ],
+  "best_val_accuracy": 0.9786931818181818,
+  "per_class": {
+    "AGAIN": {
+      "accuracy": 1.0,
+      "correct": 13,
+      "total": 13
+    },
+    "AMBULANCE": {
+      "accuracy": 0.6363636363636364,
+      "correct": 7,
+      "total": 11
+    },
+    "ANGRY": {
+      "accuracy": 0.96,
+      "correct": 24,
+      "total": 25
+    },
+    "DANGER": {
+      "accuracy": 1.0,
+      "correct": 21,
+      "total": 21
+    },
+    "DOCTOR": {
+      "accuracy": 1.0,
+      "correct": 14,
+      "total": 14
+    },
+    "EMERGENCY": {
+      "accuracy": 1.0,
+      "correct": 9,
+      "total": 9
+    },
+    "FIRE": {
+      "accuracy": 1.0,
+      "correct": 3,
+      "total": 3
+    },
+    "FOOD": {
+      "accuracy": 1.0,
+      "correct": 8,
+      "total": 8
+    },
+    "GOODBYE": {
+      "accuracy": 0.9444444444444444,
+      "correct": 34,
+      "total": 36
+    },
+    "HELLO": {
+      "accuracy": 1.0,
+      "correct": 55,
+      "total": 55
+    },
+    "HELP": {
+      "accuracy": 0.9743589743589743,
+      "correct": 38,
+      "total": 39
+    },
+    "HOSPITAL": {
+      "accuracy": 1.0,
+      "correct": 18,
+      "total": 18
+    },
+    "J": {
+      "accuracy": 1.0,
+      "correct": 52,
+      "total": 52
+    },
+    "NO": {
+      "accuracy": 0.9761904761904762,
+      "correct": 41,
+      "total": 42
+    },
+    "PLEASE": {
+      "accuracy": 0.9795918367346939,
+      "correct": 48,
+      "total": 49
+    },
+    "SORRY": {
+      "accuracy": 1.0,
+      "correct": 43,
+      "total": 43
+    },
+    "STATIC": {
+      "accuracy": 0.9736842105263158,
+      "correct": 37,
+      "total": 38
+    },
+    "STOP": {
+      "accuracy": 0.9459459459459459,
+      "correct": 35,
+      "total": 37
+    },
+    "THANK_YOU": {
+      "accuracy": 0.9814814814814815,
+      "correct": 53,
+      "total": 54
+    },
+    "WATER": {
+      "accuracy": 1.0,
+      "correct": 40,
+      "total": 40
+    },
+    "YES": {
+      "accuracy": 0.9811320754716981,
+      "correct": 52,
+      "total": 53
+    },
+    "Z": {
+      "accuracy": 1.0,
+      "correct": 44,
+      "total": 44
+    }
+  },
+  "epochs_trained": 35,
+  "validation_split_basis": "exact-duplicate-only",
+  "duplicate_extra_rows": 306,
+  "validation_is_signer_independent": false,
+  "model_params": 65931
+}

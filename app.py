@@ -156,7 +156,6 @@ STATIC_STEADY_WINDOW     = 3
 MOTION_LETTER_LABELS      = {"J", "Z"}
 MOTION_LETTER_TRUST_CONF  = 0.90          # above this the J/Z path heuristic cannot veto the model
 GESTURE_WORD_OVERRIDE_CONF = 0.86        # word gestures need a strong read to beat a static letter
-WORD_GESTURE_RECLAIM_SEC  = 1.5           # a lone letter this recent may be a word gesture's start pose
 DEBUG_STATIC_TOPK = os.environ.get("BRIDGESIGN_DEBUG_TOPK", "0") == "1"
 LIVE_GESTURES_ENABLED = os.environ.get("BRIDGESIGN_LIVE_GESTURES", "1") == "1"
 
@@ -659,13 +658,22 @@ def _live_gestures_available():
     )
 
 
-def _letters_block_word_gestures(state):
-    """Pending finger-spelling blocks word gestures, unless it is a lone fresh letter."""
+def _letters_block_word_gestures(state, conf=0.0):
+    """
+    Pending finger-spelling blocks a word gesture unless the read is strong.
+
+    A buffer holding one distinct letter is the gesture's starting handshape
+    (a flat hand reads as B before HELLO) and never blocks, however long it
+    was held. Spelled letters block weaker reads; a word gesture at
+    GESTURE_WORD_OVERRIDE_CONF or above is accepted and the letters are kept
+    as their own word.
+    """
     assembler = state.get("assembler")
     if assembler is None or not assembler.has_pending_letters():
         return False
-    reclaimable = getattr(assembler, "pending_is_reclaimable", None)
-    return not (reclaimable and reclaimable(WORD_GESTURE_RECLAIM_SEC))
+    if assembler.pending_is_start_pose():
+        return False
+    return conf < GESTURE_WORD_OVERRIDE_CONF
 
 
 def _filter_gesture_for_mode(state, label, conf):
@@ -683,7 +691,7 @@ def _filter_gesture_for_mode(state, label, conf):
     if mode == "letter" and not is_letter:
         return "", 0.0
 
-    if mode == "word" and not is_letter and _letters_block_word_gestures(state):
+    if mode == "word" and not is_letter and _letters_block_word_gestures(state, conf):
         return "", 0.0
 
     return label, conf
@@ -1147,7 +1155,7 @@ def _run_live_classification(s, features, now, threshold=None):
         gesture_label,
         gesture_conf,
         mode=mode,
-        text_pending=_letters_block_word_gestures(s),
+        text_pending=_letters_block_word_gestures(s, gesture_conf),
         moving=active_motion or not steady,
     )
 
@@ -1164,9 +1172,10 @@ def _run_live_classification(s, features, now, threshold=None):
             if decision["confirmed_unit"] == "letter":
                 s["assembler"].push_letter(label_raw)
             else:
-                if s["assembler"].has_pending_letters():
-                    # Only reachable for a reclaimable start-pose letter.
+                if s["assembler"].pending_is_start_pose():
+                    # The letter was the gesture's starting handshape.
                     s["assembler"].clear_current_word()
+                # push_word keeps any spelled letters as their own word first.
                 s["assembler"].push_word(label_raw)
 
     return {

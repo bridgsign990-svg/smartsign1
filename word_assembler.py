@@ -269,16 +269,15 @@ class WordAssembler:
         """True while the user is actively building a finger-spelled word."""
         return bool(self._buf)
 
-    def pending_is_reclaimable(self, window_sec: float) -> bool:
+    def pending_is_start_pose(self) -> bool:
         """
-        True when the only pending letter was buffered within ``window_sec``.
-        A word gesture's starting handshape often reads as one letter just
-        before the motion (H before PLEASE, C before HELLO); such a letter may
-        be replaced by the word instead of blocking it.
+        True when the buffer holds a single distinct letter. A word gesture's
+        starting handshape reads as one letter before the motion (B before
+        HELLO, H before PLEASE) and is often held for a while; it is replaced
+        by the word instead of blocking it. A hand drop flushes the buffer, so
+        pending letters always belong to the current hand presence.
         """
-        if len(self._buf) != 1 or not self._last_letter_ts:
-            return False
-        return (time.time() - self._last_letter_ts) <= window_sec
+        return bool(self._buf) and len(set(self._buf)) == 1
 
     # ── Internals ─────────────────────────────────────────────────────────────
 

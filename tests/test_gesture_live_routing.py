@@ -157,24 +157,50 @@ class TestGestureLiveRouting(unittest.TestCase):
             ("H", 0.95, "handsign"),
         )
 
-    def test_fresh_start_pose_letter_does_not_block_word_gesture(self):
+    def test_start_pose_letter_does_not_block_word_gesture(self):
+        from word_assembler import WordAssembler
+
+        assembler = WordAssembler()
+        state = {"mode": "word", "assembler": assembler}
+        assembler.push_letter("B")
+        self.assertEqual(app._filter_gesture_for_mode(state, "HELP", 0.80), ("HELP", 0.80))
+
+    def test_long_held_start_pose_letter_does_not_block_word_gesture(self):
+        # People hold the starting handshape before moving; the letter it reads
+        # as must not lock out the word however long it was held.
+        from word_assembler import WordAssembler
+
+        assembler = WordAssembler()
+        state = {"mode": "word", "assembler": assembler}
+        assembler.push_letter("B")
+        assembler._last_letter_ts -= 10.0
+        self.assertEqual(app._filter_gesture_for_mode(state, "HELP", 0.80), ("HELP", 0.80))
+
+    def test_spelled_letters_block_only_weak_word_gestures(self):
         from word_assembler import WordAssembler
 
         assembler = WordAssembler()
         state = {"mode": "word", "assembler": assembler}
         assembler.push_letter("H")
-        self.assertEqual(app._filter_gesture_for_mode(state, "HELP", 0.95), ("HELP", 0.95))
         assembler.push_letter("I")
-        self.assertEqual(app._filter_gesture_for_mode(state, "HELP", 0.95), ("", 0.0))
+        weak = app.GESTURE_WORD_OVERRIDE_CONF - 0.05
+        self.assertEqual(app._filter_gesture_for_mode(state, "HELP", weak), ("", 0.0))
+        strong = app.GESTURE_WORD_OVERRIDE_CONF
+        self.assertEqual(app._filter_gesture_for_mode(state, "HELP", strong), ("HELP", strong))
 
-    def test_stale_pending_letter_still_blocks_word_gesture(self):
+    def test_word_gesture_keeps_spelled_letters_and_replaces_start_pose(self):
         from word_assembler import WordAssembler
 
-        assembler = WordAssembler()
-        state = {"mode": "word", "assembler": assembler}
-        assembler.push_letter("H")
-        assembler._last_letter_ts -= app.WORD_GESTURE_RECLAIM_SEC + 1
-        self.assertEqual(app._filter_gesture_for_mode(state, "HELP", 0.95), ("", 0.0))
+        spelled = WordAssembler()
+        spelled.push_letter("H")
+        spelled.push_letter("I")
+        self.assertFalse(spelled.pending_is_start_pose())
+        spelled.push_word("HELP")
+        self.assertEqual(spelled._words[-2:], ["HI", "HELP"])
+
+        start_pose = WordAssembler()
+        start_pose.push_letter("B")
+        self.assertTrue(start_pose.pending_is_start_pose())
 
     def test_gesture_confirmation_uses_gesture_confidence_floor(self):
         state = {"prev_result_key": "", "last_emitted_key": "", "consecutive": 0,

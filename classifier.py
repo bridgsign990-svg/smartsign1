@@ -11,7 +11,7 @@ import pickle
 from collections import OrderedDict
 import numpy as np
 import config
-from model_artifacts import is_git_lfs_pointer, remove_unresolved_git_lfs_pointer, remove_stale_git_lfs_pointers
+from model_artifacts import is_git_lfs_pointer
 
 
 class Classifier:
@@ -24,10 +24,6 @@ class Classifier:
         self._cache_size = int(getattr(config, "CLASSIFIER_CACHE_SIZE", 2048))
         self._cache_decimals = int(getattr(config, "CLASSIFIER_CACHE_DECIMALS", 2))
 
-        stale = remove_stale_git_lfs_pointers(getattr(config, "MODELS_DIR", ""))
-        if stale:
-            print(f"[Classifier] Removed stale Git LFS pointer artifacts: {', '.join(stale)}")
-
         candidates = []
         preferred_candidates = []
         if model_path is not None:
@@ -36,6 +32,9 @@ class Classifier:
             os.path.join(config.MODELS_DIR, "sign_model_light.pkl"),
             os.path.join(config.MODELS_DIR, "sign_model.pkl"),
             os.path.join(config.MODELS_DIR, "sign_model_legacy_backup.pkl"),
+            # Interim 24-class candidate; only used when the baseline is missing
+            # so live static letters never silently disappear.
+            os.path.join(config.MODELS_DIR, "sign_model_v2.pkl"),
         ])
 
         for candidate in preferred_candidates:
@@ -58,9 +57,11 @@ class Classifier:
     def load_model(self, path):
         try:
             if is_git_lfs_pointer(path):
-                if remove_unresolved_git_lfs_pointer(path):
-                    print(f"[Classifier] Removed stale Git LFS pointer artifact at {path}")
-                return False
+                # Never delete the pointer: it is the only record of which
+                # artifact to fetch. Run `git lfs pull` to restore the data.
+                raise ValueError(
+                    f"Unresolved Git LFS pointer at {path}; run `git lfs pull` to download the model."
+                )
 
             with open(path, "rb") as f:
                 data = pickle.load(f)

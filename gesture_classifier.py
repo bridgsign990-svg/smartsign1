@@ -17,7 +17,7 @@ import json
 import pickle
 import numpy as np
 import config
-from model_artifacts import is_git_lfs_pointer, remove_stale_git_lfs_pointers, remove_unresolved_git_lfs_pointer
+from model_artifacts import is_git_lfs_pointer
 
 # Gesture window settings
 from gesture_feature_extractor import (
@@ -47,10 +47,6 @@ class GestureClassifier:
         self.model_path = None
         self.last_error = None
 
-        stale = remove_stale_git_lfs_pointers(getattr(config, "MODELS_DIR", ""))
-        if stale:
-            print(f"[GestureClassifier] Removed stale Git LFS pointer artifacts: {', '.join(stale)}")
-
         # Artifact timestamps are not stable across clones and deployments.
         # Select the named V2 export first, then use explicit legacy fallbacks.
         # A caller-supplied path always takes precedence.
@@ -61,13 +57,10 @@ class GestureClassifier:
             if not os.path.isfile(path):
                 return
             if is_git_lfs_pointer(path):
-                if remove_unresolved_git_lfs_pointer(path):
-                    print(f"[GestureClassifier] Removed stale Git LFS pointer at {path}")
-                else:
-                    print(
-                        f"[GestureClassifier] Skipping unresolved Git LFS pointer at {path}; "
-                        "the model data are unavailable."
-                    )
+                print(
+                    f"[GestureClassifier] Skipping unresolved Git LFS pointer at {path}; "
+                    "run `git lfs pull` to download the model."
+                )
                 return
             candidates.append((backend, path))
 

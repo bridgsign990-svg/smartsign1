@@ -1693,6 +1693,7 @@ def infer_frame():
         "frame_motion":       frame_motion,
         "mode":               s["mode"],
         "word_buffer":        asm["word_buffer"]        if s["mode"] == "word" else "",
+        "signed_glosses":     asm["glosses"]            if s["mode"] == "word" else [],
         "last_word":          asm["last_word"]          if s["mode"] == "word" else "",
         "sentence":           asm["sentence"]           if s["mode"] == "word" else "",
         "assist":             asm["assist"]             if s["mode"] == "word" else {},
@@ -1771,6 +1772,7 @@ def infer_landmarks():
         asm = s["assembler"].tick(hand_present=False)
 
         empty_response["word_buffer"] = asm["word_buffer"] if s["mode"] == "word" else ""
+        empty_response["signed_glosses"] = asm["glosses"] if s["mode"] == "word" else []
         empty_response["last_word"] = asm["last_word"] if s["mode"] == "word" else ""
         empty_response["sentence"] = asm["sentence"] if s["mode"] == "word" else ""
         empty_response["assist"] = asm["assist"] if s["mode"] == "word" else {}
@@ -1863,6 +1865,7 @@ def infer_landmarks():
         "frame_motion":       frame_motion,
         "mode":               s["mode"],
         "word_buffer":        asm["word_buffer"]        if s["mode"] == "word" else "",
+        "signed_glosses":     asm["glosses"]            if s["mode"] == "word" else [],
         "last_word":          asm["last_word"]          if s["mode"] == "word" else "",
         "sentence":           asm["sentence"]           if s["mode"] == "word" else "",
         "assist":             asm["assist"]             if s["mode"] == "word" else {},
@@ -2068,6 +2071,51 @@ def set_mode():
     return jsonify({"ok": True, "mode": mode})
 
 # ── Speech-to-Text (text comes from browser Web Speech API) ───────
+# ── Sentence brain (signed glosses -> suggested English sentences) ──────
+@app.route("/api/sentence/vocab")
+@login_required
+def sentence_vocab_route():
+    import sentence_vocab
+    from sentence_brain import get_brain
+
+    brain = get_brain()
+    return jsonify({
+        # A list keeps the display order; JSON objects are sorted by Flask.
+        "groups": [{"name": name, "glosses": glosses} for name, glosses in sentence_vocab.GROUPS.items()],
+        "brain_available": brain.is_available(),
+        "brain_error": None if brain.is_available() else brain.last_error,
+    })
+
+
+@app.route("/api/sentence/suggest", methods=["POST"])
+@login_required
+def sentence_suggest():
+    """Suggest sentences for the signed glosses; the signer confirms before anything is spoken."""
+    from sentence_brain import get_brain
+
+    data = request.get_json(silent=True) or {}
+    signs = data.get("signs")
+    if not isinstance(signs, list) or len(signs) > 40:
+        return jsonify({"error": "Send 'signs' as a list of up to 40 glosses."}), 400
+    started = time.perf_counter()
+    brain = get_brain()
+    suggestions = brain.suggest(signs, k=3)
+    return jsonify({
+        "suggestions": suggestions,
+        "brain_available": brain.is_available(),
+        "server_timing_ms": _perf_ms(started),
+    })
+
+
+@app.route("/api/sentence/clear", methods=["POST"])
+@login_required
+def sentence_clear():
+    s = _get_inference_session(session["username"])
+    with _inf_lock:
+        s["assembler"].glosses.clear()
+    return jsonify({"ok": True})
+
+
 @app.route("/api/stt/text", methods=["POST"])
 @login_required
 def stt_receive_text():

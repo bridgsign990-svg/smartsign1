@@ -84,3 +84,6 @@ flask_motion_fix.err.log
 models/sign_model.pkl
 models/gesture_model.pkl
 models/gesture_lstm.pt
+
+# Generated sentence-brain training pairs (rebuild: python tools/sentence_brain/build_pairs.py)
+data/sentence_brain/

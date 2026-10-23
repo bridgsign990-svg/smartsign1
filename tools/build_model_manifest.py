@@ -42,6 +42,12 @@ ARTIFACTS = {
     },
     "hand_landmarker.task": {"family": "mediapipe_hand", "status": "production"},
     "pose_landmarker_lite.task": {"family": "mediapipe_pose", "status": "production"},
+    "sentence_brain/encoder.onnx": {
+        "family": "sentence_brain",
+        "status": "production",
+        "note": "T5-small encoder, int8; see models/sentence_brain/meta.json and docs/SENTENCE_MODE.md.",
+    },
+    "sentence_brain/decoder.onnx": {"family": "sentence_brain", "status": "production"},
     "holistic_landmarker.task": {
         "family": "mediapipe_holistic",
         "status": "production",

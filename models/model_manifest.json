@@ -153,6 +153,27 @@
       "sha256": "59929e1d1ee95287735ddd833b19cf4ac46d29bc7afddbbf6753c459690d574a",
       "size_bytes": 5777746
     },
+    "sentence_brain/encoder.onnx": {
+      "family": "sentence_brain",
+      "status": "production",
+      "note": "T5-small encoder, int8; see models/sentence_brain/meta.json and docs/SENTENCE_MODE.md.",
+      "sha256": "7efff7ac7ae42192a115c8ad4655bbf6d893780909c6f244504c27d19724c45a",
+      "size_bytes": 35535808,
+      "input_shape": [
+        "b",
+        "s"
+      ]
+    },
+    "sentence_brain/decoder.onnx": {
+      "family": "sentence_brain",
+      "status": "production",
+      "sha256": "14e7d51fb159c79b9372172825393ba568eaa483d42fc4c4b7041101458d3a53",
+      "size_bytes": 58472514,
+      "input_shape": [
+        "b",
+        "t"
+      ]
+    },
     "holistic_landmarker.task": {
       "family": "mediapipe_holistic",
       "status": "production",

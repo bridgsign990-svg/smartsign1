@@ -2,3 +2,4 @@
 *.pkl filter=lfs diff=lfs merge=lfs -text
 *.pt filter=lfs diff=lfs merge=lfs -text
 *.task filter=lfs diff=lfs merge=lfs -text
+models/sentence_brain/*.onnx filter=lfs diff=lfs merge=lfs -text

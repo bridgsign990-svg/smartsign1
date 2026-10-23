@@ -177,6 +177,7 @@ class WordAssembler:
                 and (now - self._last_word_ts) < WORD_DEDUP_SEC):
             return normalized
 
+        self._record_gloss(word)
         self._commit_word(normalized, now)
         return normalized
 
@@ -230,11 +231,13 @@ class WordAssembler:
             "completed_word":     completed_word,
             "completed_sentence": completed_sentence,
             "assist":             self.assist_state(),
+            "glosses":            list(self.glosses),
         }
 
     def reset(self):
         """Full reset (called when camera stops or mode switches)."""
         self._buf          = []
+        self.glosses       = []   # committed signs for the sentence brain
         self._words        = []
         self._last_hand_ts = None
         self._last_word_ts = None
@@ -293,6 +296,7 @@ class WordAssembler:
             self._last_letter_ts = None
             now = time.time()
             self._last_hand_ts = now
+            self._record_gloss(assist_word)
             self._commit_word(assist_word, now)
             return assist_word
 
@@ -324,9 +328,17 @@ class WordAssembler:
         self._buf = []
         if not raw:
             return ""
-        if len(raw) == 1:
-            return self._map_word(raw)
-        return self._map_word(self._validate(raw))
+        validated = raw if len(raw) == 1 else self._validate(raw)
+        self._record_gloss(validated)
+        return self._map_word(validated)
+
+    def _record_gloss(self, token):
+        """Remember a committed sign as a sentence-brain gloss (fs-WORD if unknown)."""
+        from sentence_vocab import normalize_gloss
+
+        gloss = normalize_gloss(token)
+        if gloss:
+            self.glosses.append(gloss)
 
     def _commit_word(self, word: str, now: float | None = None):
         """Append a completed word to the sentence state."""

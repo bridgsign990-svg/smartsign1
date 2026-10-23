@@ -1,0 +1,7 @@
+# Extra packages for training the sentence brain (tools/sentence_brain/).
+# The app does not need these at runtime; it runs the exported ONNX model.
+-r requirements.txt   # includes CPU torch
+transformers==4.57.6
+sentencepiece==0.2.2
+pyarrow==26.0.0
+huggingface_hub

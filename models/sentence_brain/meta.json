@@ -1,0 +1,20 @@
+{
+  "base_model": "google-t5/t5-small",
+  "task_prefix": "gloss: ",
+  "pad_token_id": 0,
+  "eos_token_id": 1,
+  "decoder_start_token_id": 0,
+  "max_source_tokens": 48,
+  "max_target_tokens": 48,
+  "trained": "2026-10-23",
+  "training_data": {
+    "conversation": "tools/sentence_brain/build_pairs.py (generated everyday gloss/English pairs)",
+    "formal": "ASLG-PC12 (Othman & Jemni 2012), CC BY-NC 4.0, short pairs, 'gloss formal:' prefix"
+  },
+  "evaluation": {
+    "test_exact_match": 0.9862518089725036,
+    "test_pairs": 1382,
+    "note": "Held-out generated pairs; measures grammar coverage, not real signer conversations."
+  },
+  "license_note": "Trained partly on ASLG-PC12 (CC BY-NC 4.0): non-commercial use only."
+}

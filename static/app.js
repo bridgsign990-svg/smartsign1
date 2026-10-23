@@ -85,6 +85,10 @@ let cameraRunning  = false;
 let lastLabel      = "";
 let lastWord       = "";
 let currentMode    = "letter";
+// Sentence mode runs the server in Word mode; the sentence UI lives in sentence.js.
+function serverMode() {
+  return currentMode === "sentence" ? "word" : currentMode;
+}
 let sessionStart   = null;
 let timerInterval  = null;
 let signCount      = 0;
@@ -119,7 +123,7 @@ function numberOption(value, fallback) {
 function liveConsecutiveThreshold() {
   const base = numberOption(LIVE_PERF.consecutiveThreshold, 2);
   const wordBase = numberOption(LIVE_PERF.wordConsecutiveThreshold, base);
-  return Math.max(2, currentMode === "word" ? wordBase : base);
+  return Math.max(2, serverMode() === "word" ? wordBase : base);
 }
 
 function scaledSize(width, height, maxDim) {
@@ -287,7 +291,7 @@ async function sendLocalLandmarks(landmarks) {
         landmarks,
         camera_facing: facingMode,
         mirrored: shouldMirrorFrontCameraLandmarks(),
-        mode: currentMode,
+        mode: serverMode(),
         consecutive_threshold: liveConsecutiveThreshold()
       }),
       signal: controller.signal
@@ -506,7 +510,7 @@ async function toggleCamera() {
     await fetch("/api/camera/start", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mode: currentMode })
+      body: JSON.stringify({ mode: serverMode() })
     });
 
     feed.srcObject = _videoStream;
@@ -618,7 +622,7 @@ async function captureAndInfer() {
       const fd = new FormData();
       fd.append("frame", blob, "frame.jpg");
       fd.append("consecutive_threshold", liveConsecutiveThreshold());
-      fd.append("mode", currentMode);
+      fd.append("mode", serverMode());
       try {
         const res = await fetchWithTimeout(
           "/api/infer_frame",
@@ -684,6 +688,9 @@ function handleInferResponse(d) {
 
   if (d.mode === "word") {
     applyAssemblerState(d);
+  }
+  if (currentMode === "sentence" && typeof window.onSentenceInfer === "function") {
+    window.onSentenceInfer(d);
   }
 
   if (d.label && d.label !== lastLabel && handState === "recognised") {
@@ -966,11 +973,19 @@ async function switchMode(mode) {
   // Toggle buttons
   document.getElementById("modeLetter").classList.toggle("active", mode === "letter");
   document.getElementById("modeWord").classList.toggle("active", mode === "word");
-  // Show / hide word UI
+  document.getElementById("modeSentence")?.classList.toggle("active", mode === "sentence");
+  // Show / hide word and sentence UI
   const wbc = document.getElementById("wordBufferCard");
   const ss  = document.getElementById("sentenceStrip");
+  const sc  = document.getElementById("sentenceCard");
+  const cp  = document.getElementById("conversationPanel");
   if (wbc) wbc.style.display = mode === "word" ? "block" : "none";
   if (ss)  ss.style.display  = mode === "word" ? "flex"  : "none";
+  if (sc)  sc.style.display  = mode === "sentence" ? "block" : "none";
+  if (cp)  cp.style.display  = mode === "sentence" ? "block" : "none";
+  if (mode === "sentence" && typeof window.onSentenceModeOpened === "function") {
+    window.onSentenceModeOpened();
+  }
   // Reset letter tracking
   lastLabel = "";
   lastWord  = "";
@@ -979,9 +994,13 @@ async function switchMode(mode) {
   await fetch("/api/mode", {
     method:  "POST",
     headers: { "Content-Type": "application/json" },
-    body:    JSON.stringify({ mode }),
+    body:    JSON.stringify({ mode: serverMode() }),
   });
-  showToast(mode === "word" ? "📝 Word mode on — sign letters to build words!" : "🔤 Letter mode on");
+  showToast(
+    mode === "sentence" ? "💬 Sentence mode on — sign words, then pick a sentence"
+      : mode === "word" ? "📝 Word mode on — sign letters to build words!"
+      : "🔤 Letter mode on"
+  );
 }
 
 // ── Confidence ─────────────────────────────────────────────

@@ -609,6 +609,18 @@ def _reset_inference_session(username):
             s["tracked_count"]          = 0
 
 
+def _apply_mode(username, mode):
+    """Set the recognition mode, resetting buffers only when it changes."""
+    if mode not in ("letter", "word"):
+        return
+    s = _get_inference_session(username)
+    if s.get("mode") == mode:
+        return
+    _reset_inference_session(username)
+    with _inf_lock:
+        _inference_sessions[username]["mode"] = mode
+
+
 def _display_label(label):
     return str(label or "").replace("_", " ").strip()
 
@@ -1480,8 +1492,12 @@ def logout():
 @login_required
 def start_camera():
     """Reset per-user ML state to prepare for a new session."""
-    _reset_inference_session(session["username"])
-    return jsonify({"ok": True})
+    username = session["username"]
+    _reset_inference_session(username)
+    # The page always opens in the mode it displays; the server session can
+    # outlive a reload or re-login, so take the browser's mode here.
+    _apply_mode(username, (request.get_json(silent=True) or {}).get("mode", "letter"))
+    return jsonify({"ok": True, "mode": _get_inference_session(username)["mode"]})
 
 @app.route("/api/camera/stop", methods=["POST"])
 @login_required
@@ -1503,6 +1519,7 @@ def infer_frame():
     """
     started_perf = time.perf_counter()
     username = session["username"]
+    _apply_mode(username, request.form.get("mode"))
     s = _get_inference_session(username)
     s["frame_count"] = s.get("frame_count", 0) + 1
 
@@ -1693,10 +1710,11 @@ def infer_landmarks():
     """
     started_perf = time.perf_counter()
     username = session["username"]
+    data = request.get_json() or {}
+    _apply_mode(username, data.get("mode"))
     s = _get_inference_session(username)
     s["frame_count"] = s.get("frame_count", 0) + 1
 
-    data = request.get_json() or {}
     lm_list = data.get("landmarks")
     threshold = None
     if "consecutive_threshold" in data:
@@ -1825,6 +1843,7 @@ def infer_landmarks():
         "gesture_candidate_label": _display_label(s.get("gesture_candidate_label", "")),
         "gesture_candidate_confidence": s.get("gesture_candidate_conf", 0.0),
         "gesture_status": s.get("gesture_status", "warming_up"),
+        "static_model_ready": bool(_classifier is not None and getattr(_classifier, "pipeline", None) is not None),
         "motion_magnitude":   motion_magnitude,
         "frame_motion":       frame_motion,
         "mode":               s["mode"],

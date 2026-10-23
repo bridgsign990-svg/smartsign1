@@ -287,6 +287,7 @@ async function sendLocalLandmarks(landmarks) {
         landmarks,
         camera_facing: facingMode,
         mirrored: shouldMirrorFrontCameraLandmarks(),
+        mode: currentMode,
         consecutive_threshold: liveConsecutiveThreshold()
       }),
       signal: controller.signal
@@ -502,7 +503,11 @@ async function toggleCamera() {
       return;
     }
     // Notify server to reset session state
-    await fetch("/api/camera/start", { method: "POST" });
+    await fetch("/api/camera/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: currentMode })
+    });
 
     feed.srcObject = _videoStream;
     await feed.play();
@@ -613,6 +618,7 @@ async function captureAndInfer() {
       const fd = new FormData();
       fd.append("frame", blob, "frame.jpg");
       fd.append("consecutive_threshold", liveConsecutiveThreshold());
+      fd.append("mode", currentMode);
       try {
         const res = await fetchWithTimeout(
           "/api/infer_frame",
@@ -828,10 +834,23 @@ function updateHandState(handState, d) {
   const msg    = document.getElementById("signStateMsg");
   if (!signEl || !msg) return;
 
+  if (d?.static_model_ready === false && handState !== "no_hand") {
+    signEl.textContent = "–";
+    signEl.dataset.state = "low_confidence";
+    msg.textContent = "Letter model is not loaded on the server (models/sign_model_light.pkl). Run `git lfs pull` and restart.";
+    msg.className = "sign-state-msg unclear";
+    return;
+  }
+
   const gestureCandidate = d?.gesture_candidate_label || "";
   const gesturePercent = Math.round((d?.gesture_candidate_confidence || 0) * 100);
   const gestureStatus = d?.gesture_status || "";
-  if (handState !== "no_hand" && handState !== "recognised" && handState !== "pending") {
+  const mode = d?.mode || currentMode;
+  const isLetterCandidate = /^[A-Z]$/.test(gestureCandidate);
+  // Gesture hints only help when no hand-sign guess exists. In Letter mode a
+  // word candidate (HELLO, YES, ...) must never replace the letter display.
+  const showGestureHint = !d?.static_label && (mode === "word" || isLetterCandidate);
+  if (showGestureHint && handState !== "no_hand" && handState !== "recognised" && handState !== "pending") {
     if (gestureCandidate && gestureStatus === "word_mode_required") {
       signEl.textContent = gestureCandidate;
       signEl.dataset.state = "low_confidence";
@@ -884,6 +903,7 @@ function updateHandState(handState, d) {
     const rawLabel = (d && d.static_label) ? d.static_label : "";
     const rawConf  = (d && d.static_confidence > 0) ? Math.round(d.static_confidence * 100) : 0;
     if (rawLabel && rawConf > 0) {
+      signEl.textContent = rawLabel;
       msg.textContent = `🟡 Best guess: ${rawLabel} (${rawConf}%) — hold still`;
     } else {
       msg.textContent = "🟡 Sign unclear — hold still and try again";

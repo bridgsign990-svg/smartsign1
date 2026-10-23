@@ -163,13 +163,57 @@ approve the tested experience for a limited, supervised pilot.
   V2 workflow excludes J and Z; the rows remain preserved in the dataset.
 - `models/sign_model_v2.pkl` is an **interim** 24-class candidate trained from
   one signer/session. It has not been activated in the live app and is not an
-  independent-session accuracy result.
-- The current gesture ONNX model is separate from the static classifier.
-  Check the model's loaded labels and readiness endpoint rather than inferring
-  availability from class metadata or filenames.
+  independent-session accuracy result. The current dataset has 60 samples per
+  ordinary class and 100 per priority class, or 20% of the documented 300/500
+  targets. All rows are from signer `S01` and session
+  `S01-20261023-morning`; the planned group-separated evaluation is not yet
+  possible.
+- The current dataset quality and training reports agree on SHA-256
+  `71252198f1d1f953ade37ea67ce523efb61ca1821b79df6ed11fec1b0f970420`.
+  The checked-in V2 evaluation report is stale: it refers to a different data
+  hash, 1,880 rows, and artifacts under an old Desktop checkout. Do not cite it
+  as an evaluation of the current dataset/model. See the
+  [Phase 0 artifact and data audit](./reports/PHASE0_CURRENT_STATE_AUDIT.md).
+- Gesture recognition uses a separate temporal ONNX model. The repository has
+  a 22-label `models/gesture_lstm_v2.onnx` export and an older 13-label
+  `models/gesture_lstm.onnx` export. V2 reports 97.9% validation accuracy, but
+  its split is exact-duplicate-only, contains 306 duplicate rows, and is not
+  signer-independent. This is a development result, not live-camera or
+  independent-signer accuracy. The older export reports 99.4%, but its
+  metadata does not document a split basis. Neither result is sufficient for
+  a general accuracy claim.
+- Gesture model choice must be deterministic across deployments; file
+  modification times are not model provenance. `/ready` now reports the
+  loaded artifact, SHA-256, backend, labels, and available evaluation caveats
+  separately from static, hand, pose, and video-worker readiness.
+- Hand, pose, static, and gesture initialization are isolated so one module's
+  load failure does not prevent unrelated modules from becoming available.
+  Live inference can run when the hand detector, feature extractor, and either
+  the static classifier or gesture model are ready. The gesture model no
+  longer depends on the unpromoted static-letter candidate; static letters
+  remain unavailable when no production static classifier is installed.
+  These code changes still require focused integration validation before a
+  release claim.
+- The live browser path now uses the bundled client-side hand tracker and
+  posts landmarks for server classification. This addresses observed repeated
+  550 ms image-inference request timeouts; the request deadline is now 1.8 s.
+  The UI can display an explicitly tentative gesture candidate and explain
+  when it is waiting for motion, confidence, or Word mode. The model's STATIC
+  output is now distinguished from a rejected J/Z motion-path check; rejected
+  J/Z candidates remain visible as tentative when available. In one live
+  smoke check on 2026-10-23, the page showed 21 hand landmarks, offered FOOD
+  at 99% as a possible word while Letter mode was selected, later offered YES
+  at 72%, and displayed Z in the recent-sign list. The intended sign and
+  timing were not recorded as ground truth, so this confirms the live path and
+  mode/feedback behavior only—not recognition accuracy.
 - The pose and hand detector task assets are local model artifacts. At the
   time of the snapshot, stale Git LFS pointer stubs had been removed from the
   current model directory. Keep artifact verification in startup diagnostics.
+- A local inventory on 2026-10-23 recorded SHA-256 checksums and ONNX tensor
+  shapes for the active candidate/runtime artifacts. The old
+  `holistic_landmarker.task.metadata.json` has no matching task file and is not
+  evidence of an enabled module. The inventory did not capture a current live
+  `/ready` response; confirm readiness from the running app before a demo.
 - Existing audits document important prior findings, but their dates and
   artifact assumptions differ from the current workspace. Treat them as
   historical evidence, not as a replacement for rerunning checks:
@@ -509,6 +553,14 @@ phone dialer, or delay the user's own attempt to call for help.
   reports.
 - Run the applicable tests and store the exact command/results.
 
+**Local audit progress (2026-10-23):** artifact checksums, ONNX input/output
+shapes, dataset provenance/counts, stale evaluation metadata, and an orphaned
+holistic-model metadata file are documented in
+[`reports/PHASE0_CURRENT_STATE_AUDIT.md`](./reports/PHASE0_CURRENT_STATE_AUDIT.md).
+This closes the local inventory portion only. Phase 0 remains open: the
+additional collection sessions, current group-separated evaluation, live
+readiness capture, and applicable release checks are outstanding.
+
 **Exit gate:** collection data is intact, all artifacts are identified, and
 the app does not claim unsupported module readiness.
 
@@ -603,6 +655,7 @@ support plan, and rollback path.
 - [Repository/model/deployment audit](./REPOSITORY_FORENSIC_AUDIT.md)
 - [Avatar and sign-content audit](./AVATAR_CONTENT_AUDIT.md)
 - [Dataset forensic report](./DATASET_FORENSICS_REPORT.md)
+- [Phase 0 artifact and data audit](./reports/PHASE0_CURRENT_STATE_AUDIT.md)
 - [Learning mode implementation](./learning_mode.py)
 
 Re-run the relevant audits after material changes. Update the current snapshot,

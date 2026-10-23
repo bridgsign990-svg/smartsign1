@@ -226,6 +226,7 @@ _pose_detector_lock = threading.Lock()
 _image_translator_lock = threading.Lock()
 _inference_init_lock = threading.Lock()
 _inference_status = {"ready": False, "loading": False, "error": ""}
+_module_errors = {}
 _stt_cache = OrderedDict()
 _stt_cache_lock = threading.Lock()
 _image_result_cache = OrderedDict()
@@ -288,32 +289,80 @@ def _load_inference_modules():
             return
 
         _inference_status.update({"ready": False, "loading": True, "error": ""})
-        try:
-            from hand_detector import HandDetector
-            from feature_extractor import FeatureExtractor
-            from classifier import Classifier
-            from gesture_classifier import GestureClassifier
-            from pose_detector import PoseDetector
+        _module_errors.clear()
+        print("[BridgeSign] Loading inference modules...")
 
-            print("[BridgeSign] Loading inference modules...")
-            _detector           = HandDetector()
-            _motion_detector    = HandDetector(max_hands=2, detection_con=0.55, track_con=0.45)
-            _pose_detector      = PoseDetector(detection_con=0.5, track_con=0.5)
-            _extractor          = FeatureExtractor()
-            _classifier         = Classifier()
-            if LIVE_GESTURES_ENABLED:
-                _gesture_classifier = GestureClassifier()
-            else:
-                _gesture_classifier = None
-                print("[BridgeSign] Live gesture model disabled for stable alphabet/word recognition.")
-            print("[BridgeSign] Modules ready.")
+        def load_module(name, factory):
+            try:
+                return factory()
+            except Exception as error:
+                _module_errors[name] = str(error)
+                print(f"[BridgeSign] {name} load failed: {error}")
+                traceback.print_exc()
+                return None
+
+        _detector = load_module("hand_detector", lambda: __import__("hand_detector").HandDetector())
+        _motion_detector = load_module(
+            "motion_hand_detector",
+            lambda: __import__("hand_detector").HandDetector(
+                max_hands=2, detection_con=0.55, track_con=0.45
+            ),
+        )
+        _pose_detector = load_module(
+            "pose_detector",
+            lambda: __import__("pose_detector").PoseDetector(detection_con=0.5, track_con=0.5),
+        )
+        _extractor = load_module("static_feature_extractor", lambda: __import__("feature_extractor").FeatureExtractor())
+        _classifier = load_module("static_classifier", lambda: __import__("classifier").Classifier())
+        if _classifier is not None and getattr(_classifier, "pipeline", None) is None:
+            _module_errors["static_classifier"] = (
+                getattr(_classifier, "last_error", None)
+                or "No static classifier artifact is loaded; static-letter recognition is unavailable."
+            )
+        if LIVE_GESTURES_ENABLED:
+            _gesture_classifier = load_module(
+                "gesture_model", lambda: __import__("gesture_classifier").GestureClassifier()
+            )
+        else:
+            _gesture_classifier = None
+            print("[BridgeSign] Live gesture model disabled for stable alphabet/word recognition.")
+
+        static_model_ready = bool(
+            _classifier is not None and getattr(_classifier, "pipeline", None) is not None
+        )
+        gesture_model_ready = bool(
+            LIVE_GESTURES_ENABLED
+            and _gesture_classifier is not None
+            and _gesture_classifier.is_available()
+        )
+        live_inference_ready = bool(
+            _detector is not None
+            and _extractor is not None
+            and (static_model_ready or gesture_model_ready)
+        )
+        if _classifier is not None and getattr(_classifier, "pipeline", None) is not None:
             _run_sanity_check()
-            _inference_status.update({"ready": True, "loading": False, "error": ""})
-        except Exception as e:
-            _inference_status.update({"ready": False, "loading": False, "error": str(e)})
-            print(f"[BridgeSign] Inference module load failed: {e}")
-            traceback.print_exc()
-            # Do not crash the gunicorn worker — keep /health and the UI alive.
+        core_error = ""
+        if not live_inference_ready:
+            core_error = "; ".join(
+                f"{name}: {message}"
+                for name, message in _module_errors.items()
+                if name in {"hand_detector", "static_feature_extractor", "static_classifier", "gesture_model"}
+            ) or "Hand detection, feature extraction, and a usable recognition model are required."
+        _inference_status.update({
+            "ready": live_inference_ready,
+            "loading": False,
+            "error": core_error,
+        })
+        if live_inference_ready:
+            paths = []
+            if static_model_ready:
+                paths.append("static letters")
+            if gesture_model_ready:
+                paths.append("motion gestures")
+            print(f"[BridgeSign] Live recognition ready: {', '.join(paths)}.")
+        else:
+            print("[BridgeSign] Live recognition is not ready.")
 
 
 def _inference_not_ready_response(s):
@@ -366,7 +415,66 @@ def ready():
     model_loaded = bool(_classifier and getattr(_classifier, "pipeline", None))
     extractor_loaded = _extractor is not None
     detector_loaded = _detector is not None
-    ready_state = bool(_inference_status["ready"] and model_loaded and extractor_loaded)
+    gesture_available = _live_gestures_available()
+    ready_state = bool(
+        _inference_status["ready"]
+        and detector_loaded
+        and extractor_loaded
+        and (model_loaded or gesture_available)
+    )
+    gesture_path = getattr(_gesture_classifier, "model_path", None)
+    gesture_evaluation = {}
+    if gesture_path:
+        stem, _ = os.path.splitext(gesture_path)
+        metadata_path = stem + "_meta.json"
+        try:
+            with open(metadata_path, "r", encoding="utf-8") as metadata_file:
+                metadata = json.load(metadata_file)
+            gesture_evaluation = {
+                "reported_validation_accuracy": metadata.get("best_val_accuracy"),
+                "validation_split_basis": metadata.get("validation_split_basis"),
+                "validation_is_signer_independent": metadata.get("validation_is_signer_independent"),
+            }
+        except (OSError, ValueError):
+            # Readiness should describe the loaded runtime even when optional
+            # evaluation metadata is absent or malformed.
+            gesture_evaluation = {"metadata_available": False}
+    gesture_sha256 = None
+    if gesture_path:
+        try:
+            digest = hashlib.sha256()
+            with open(gesture_path, "rb") as artifact:
+                for chunk in iter(lambda: artifact.read(1024 * 1024), b""):
+                    digest.update(chunk)
+            gesture_sha256 = digest.hexdigest()
+        except OSError:
+            pass
+    try:
+        from video_recognition import is_runtime_configured
+        video_worker_ready = bool(is_runtime_configured())
+    except Exception:
+        video_worker_ready = False
+    module_readiness = {
+        "hand_detector": {"ready": detector_loaded},
+        "pose_detector": {"ready": _pose_detector is not None},
+        "static_classifier": {
+            "ready": model_loaded,
+            "feature_extractor_ready": extractor_loaded,
+            "labels": list(getattr(_classifier, "categories", {}).values()) if _classifier else [],
+            "error": _module_errors.get("static_classifier"),
+        },
+        "gesture_model": {
+            "ready": gesture_available,
+            "enabled": LIVE_GESTURES_ENABLED,
+            "backend": getattr(_gesture_classifier, "backend", None),
+            "artifact": gesture_path,
+            "sha256": gesture_sha256,
+            "labels": sorted(_available_gesture_labels()),
+            "evaluation": gesture_evaluation,
+            "error": getattr(_gesture_classifier, "last_error", None),
+        },
+        "video_worker": {"ready": video_worker_ready},
+    }
     return jsonify({
         "status": "ready" if ready_state else "not_ready",
         "inference_ready": ready_state,
@@ -380,6 +488,8 @@ def ready():
         "live_gestures_enabled": LIVE_GESTURES_ENABLED,
         "live_gestures_available": _live_gestures_available(),
         "live_gesture_labels": sorted(_available_gesture_labels()),
+        "module_errors": dict(_module_errors),
+        "modules": module_readiness,
         "python_version": sys.version.split()[0],
         "data_dir": config.DATA_DIR,
         "data_dir_writable": os.access(config.DATA_DIR, os.W_OK),
@@ -465,6 +575,9 @@ def _get_inference_session(username):
                 "last_gesture_frame":      -999,
                 "cached_gesture_label":    "",
                 "cached_gesture_conf":     0.0,
+                "gesture_candidate_label": "",
+                "gesture_candidate_conf":  0.0,
+                "gesture_status":          "warming_up",
                 "mode":                   "letter",
                 "stt_history":            [],
                 "frame_count":            0,
@@ -489,6 +602,9 @@ def _reset_inference_session(username):
             s["last_gesture_frame"]      = -999
             s["cached_gesture_label"]    = ""
             s["cached_gesture_conf"]     = 0.0
+            s["gesture_candidate_label"] = ""
+            s["gesture_candidate_conf"]  = 0.0
+            s["gesture_status"]          = "warming_up"
             s["frame_count"]            = 0
             s["tracked_count"]          = 0
 
@@ -568,6 +684,9 @@ def _predict_static_sign(features):
     """
     from feature_extractor import FeatureExtractor
 
+    if _classifier is None or getattr(_classifier, "pipeline", None) is None:
+        return "", 0.0
+
     if hasattr(_classifier, "predict_many"):
         (label, conf), (flip_label, flip_conf) = _classifier.predict_many([
             features,
@@ -622,6 +741,9 @@ def _clear_live_prediction_state(s):
     s["recent_frame_motion"] = []
     if "gesture_ext" in s:
         s["gesture_ext"].clear()
+    _clear_gesture_cache(s)
+    if "gesture_status" in s:
+        s["gesture_status"] = "waiting_for_hand"
 
 
 def _update_live_confirmation(s, label_raw, conf, source, now, threshold=None):
@@ -777,6 +899,8 @@ def _refine_motion_letter_prediction(raw_seq, label, conf):
 def _clear_gesture_cache(state):
     state["cached_gesture_label"] = ""
     state["cached_gesture_conf"] = 0.0
+    state["gesture_candidate_label"] = ""
+    state["gesture_candidate_conf"] = 0.0
 
 
 def _cache_gesture_candidate(state, label, conf):
@@ -790,12 +914,16 @@ def _predict_gesture_candidate(state, motion=None):
     """Run the motion-gesture classifier without mixing it into the static path."""
     if not _live_gestures_available() or not state["gesture_ext"].is_ready():
         _clear_gesture_cache(state)
+        state["gesture_status"] = (
+            "model_unavailable" if not _live_gestures_available() else "warming_up"
+        )
         return "", 0.0
 
     if motion is None:
         motion = state["gesture_ext"].get_motion_magnitude()
     if motion <= GESTURE_MOTION_THRESHOLD:
         _clear_gesture_cache(state)
+        state["gesture_status"] = "waiting_for_motion"
         return "", 0.0
 
     frame_count = state.get("frame_count", 0)
@@ -805,29 +933,62 @@ def _predict_gesture_candidate(state, motion=None):
     if _gesture_classifier.is_lstm():
         raw_seq = state["gesture_ext"].get_raw_sequence()
         if raw_seq is None:
+            state["gesture_status"] = "warming_up"
             return _cache_gesture_candidate(state, "", 0.0)
         g_label, g_conf = _gesture_classifier.predict(raw_seq)
         if g_label not in _available_gesture_labels():
+            _clear_gesture_cache(state)
+            state["gesture_status"] = "no_model_label"
             return _cache_gesture_candidate(state, "", 0.0)
+        if g_label == "STATIC":
+            _clear_gesture_cache(state)
+            state["gesture_status"] = "no_gesture"
+            return _cache_gesture_candidate(state, "", 0.0)
+        state["gesture_candidate_label"] = g_label if g_label != "STATIC" else ""
+        state["gesture_candidate_conf"] = float(g_conf or 0.0)
         g_label, g_conf = _refine_motion_letter_prediction(raw_seq, g_label, g_conf)
-        if not g_label or g_label == "STATIC" or g_conf < GESTURE_LSTM_MIN_CONF:
+        if not g_label or g_label == "STATIC":
+            state["gesture_status"] = "motion_check_rejected"
+            return _cache_gesture_candidate(state, "", 0.0)
+        if g_conf < GESTURE_LSTM_MIN_CONF:
+            state["gesture_status"] = "low_confidence"
             return _cache_gesture_candidate(state, "", 0.0)
         g_label, g_conf = _filter_gesture_for_mode(state, g_label, g_conf)
         if not g_label:
+            state["gesture_status"] = "word_mode_required" if state.get("mode") == "letter" else "waiting_for_word_buffer"
             return _cache_gesture_candidate(state, "", 0.0)
+        state["gesture_candidate_label"] = g_label
+        state["gesture_candidate_conf"] = float(g_conf)
+        state["gesture_status"] = "candidate"
         return _cache_gesture_candidate(state, g_label, g_conf)
 
     g_feats = state["gesture_ext"].extract_gesture_features()
     g_label, g_conf = _gesture_classifier.predict(g_feats)
     raw_seq = state["gesture_ext"].get_raw_sequence()
     if g_label not in _available_gesture_labels():
+        _clear_gesture_cache(state)
+        state["gesture_status"] = "no_model_label"
         return _cache_gesture_candidate(state, "", 0.0)
+    if g_label == "STATIC":
+        _clear_gesture_cache(state)
+        state["gesture_status"] = "no_gesture"
+        return _cache_gesture_candidate(state, "", 0.0)
+    state["gesture_candidate_label"] = g_label if g_label != "STATIC" else ""
+    state["gesture_candidate_conf"] = float(g_conf or 0.0)
     g_label, g_conf = _refine_motion_letter_prediction(raw_seq, g_label, g_conf)
-    if not g_label or g_conf < GESTURE_MIN_CONFIDENCE:
+    if not g_label:
+        state["gesture_status"] = "motion_check_rejected"
+        return _cache_gesture_candidate(state, "", 0.0)
+    if g_conf < GESTURE_MIN_CONFIDENCE:
+        state["gesture_status"] = "low_confidence"
         return _cache_gesture_candidate(state, "", 0.0)
     g_label, g_conf = _filter_gesture_for_mode(state, g_label, g_conf)
     if not g_label:
+        state["gesture_status"] = "word_mode_required" if state.get("mode") == "letter" else "waiting_for_word_buffer"
         return _cache_gesture_candidate(state, "", 0.0)
+    state["gesture_candidate_label"] = g_label
+    state["gesture_candidate_conf"] = float(g_conf)
+    state["gesture_status"] = "candidate"
     return _cache_gesture_candidate(state, g_label, g_conf)
 
 
@@ -1493,6 +1654,9 @@ def infer_frame():
         "static_top":         static_top,
         "gesture_label":      _display_label(gesture_label),
         "gesture_confidence": gesture_conf,
+        "gesture_candidate_label": _display_label(s.get("gesture_candidate_label", "")) if hand_detected else "",
+        "gesture_candidate_confidence": s.get("gesture_candidate_conf", 0.0) if hand_detected else 0.0,
+        "gesture_status": s.get("gesture_status", "warming_up") if hand_detected else "waiting_for_hand",
         "motion_magnitude":   motion_magnitude,
         "frame_motion":       frame_motion,
         "mode":               s["mode"],
@@ -1658,6 +1822,9 @@ def infer_landmarks():
         "static_top":         static_top,
         "gesture_label":      _display_label(gesture_label),
         "gesture_confidence": gesture_conf,
+        "gesture_candidate_label": _display_label(s.get("gesture_candidate_label", "")),
+        "gesture_candidate_confidence": s.get("gesture_candidate_conf", 0.0),
+        "gesture_status": s.get("gesture_status", "warming_up"),
         "motion_magnitude":   motion_magnitude,
         "frame_motion":       frame_motion,
         "mode":               s["mode"],

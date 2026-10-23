@@ -44,17 +44,20 @@ class GestureClassifier:
         self.categories = {}     # {0: 'J', 1: 'Z', ...}
         self.n_features_in_ = None
         self._device    = "cpu"
+        self.model_path = None
+        self.last_error = None
 
         stale = remove_stale_git_lfs_pointers(getattr(config, "MODELS_DIR", ""))
         if stale:
             print(f"[GestureClassifier] Removed stale Git LFS pointer artifacts: {', '.join(stale)}")
 
-        # Honor an explicit sklearn artifact, otherwise try production artifacts
-        # newest-first. This prevents an old ONNX export from masking a newer
-        # checkpoint while still allowing the ONNX model to serve as a fallback.
+        # Artifact timestamps are not stable across clones and deployments.
+        # Select the named V2 export first, then use explicit legacy fallbacks.
+        # A caller-supplied path always takes precedence.
         candidates = []
+        fallback_candidates = []
 
-        def add_candidate(mtime, priority, backend, path):
+        def add_candidate(backend, path):
             if not os.path.isfile(path):
                 return
             if is_git_lfs_pointer(path):
@@ -66,40 +69,38 @@ class GestureClassifier:
                         "the model data are unavailable."
                     )
                 return
-            candidates.append((mtime, priority, backend, path))
+            candidates.append((backend, path))
 
         if model_path:
-            add_candidate(float("inf"), 4, "sklearn", model_path)
+            add_candidate("sklearn", model_path)
 
-        checkpoint_mtime = (
-            os.path.getmtime(LSTM_MODEL_PATH) if os.path.isfile(LSTM_MODEL_PATH) else 0
-        )
-        if os.path.isfile(ONNX_V2_MODEL_PATH):
-            # Speed/mirror-augmented 22-class export; classes are embedded.
-            add_candidate(os.path.getmtime(ONNX_V2_MODEL_PATH), 3, "onnx", ONNX_V2_MODEL_PATH)
-        if os.path.isfile(ONNX_MODEL_PATH) and os.path.isfile(LSTM_META_PATH):
-            onnx_mtime = os.path.getmtime(ONNX_MODEL_PATH)
-            add_candidate(onnx_mtime, 3, "onnx", ONNX_MODEL_PATH)
-        if os.path.isfile(LSTM_MODEL_PATH):
-            add_candidate(checkpoint_mtime, 2, "lstm", LSTM_MODEL_PATH)
-        if os.path.isfile(SKLEARN_MODEL_PATH):
-            add_candidate(
-                os.path.getmtime(SKLEARN_MODEL_PATH),
-                1,
-                "sklearn",
-                SKLEARN_MODEL_PATH,
-            )
+        # This named export is the intended current model. Prefer it explicitly
+        # regardless of checkout/deployment mtimes; order legacy fallbacks by
+        # recency only when the V2 artifact is absent or unusable.
+        add_candidate("onnx", ONNX_V2_MODEL_PATH)
+        for backend, path in (
+            ("onnx", ONNX_MODEL_PATH),
+            ("lstm", LSTM_MODEL_PATH),
+            ("sklearn", SKLEARN_MODEL_PATH),
+        ):
+            if os.path.isfile(path):
+                fallback_candidates.append((os.path.getmtime(path), backend, path))
+        fallback_candidates.sort(reverse=True)
+        for _, backend, path in fallback_candidates:
+            add_candidate(backend, path)
 
-        for _, _, backend, path in sorted(candidates, reverse=True):
+        for backend, path in candidates:
             loaded = {
                 "onnx": self._load_onnx,
                 "lstm": self._load_lstm,
                 "sklearn": self._load_sklearn,
             }[backend](path)
             if loaded:
+                self.model_path = os.path.abspath(path)
                 return
 
         if not candidates:
+            self.last_error = "No gesture model artifact found."
             print("[GestureClassifier] No gesture model found -- gesture recognition disabled.")
             print("[GestureClassifier] Run lstm_gesture_trainer.py or gesture_trainer.py.")
         else:
@@ -130,12 +131,15 @@ class GestureClassifier:
             self.categories = {i: c for i, c in enumerate(classes)}
             self.model = model
             self.backend = "lstm"
+            self.model_path = os.path.abspath(path)
+            self.last_error = None
 
             print(f"[GestureClassifier] LSTM model loaded from {path}")
             print(f"[GestureClassifier] {len(classes)} gestures: {classes}")
             return True
 
         except Exception as e:
+            self.last_error = str(e)
             print(f"[GestureClassifier] Error loading LSTM model: {e}")
             return False
 
@@ -153,12 +157,15 @@ class GestureClassifier:
             self.categories = {i: c for i, c in enumerate(classes_list)}
             self.n_features_in_ = getattr(pipeline, "n_features_in_", None)
             self.backend = "sklearn"
+            self.model_path = os.path.abspath(path)
+            self.last_error = None
 
             print(f"[GestureClassifier] sklearn model loaded from {path}")
             print(f"[GestureClassifier] {len(self.categories)} gestures: {classes_list}")
             return True
 
         except Exception as e:
+            self.last_error = str(e)
             print(f"[GestureClassifier] Error loading sklearn model: {e}")
             return False
 
@@ -184,13 +191,21 @@ class GestureClassifier:
                 )
             if not classes or any(not isinstance(label, str) or not label for label in classes):
                 raise ValueError("Gesture model metadata contains invalid class labels")
+            input_shape = ort_session.get_inputs()[0].shape
+            if len(input_shape) != 3 or input_shape[-1] != STATIC_FEATURES:
+                raise ValueError(
+                    f"ONNX input must be rank 3 with {STATIC_FEATURES} features; got {input_shape}"
+                )
             self.categories = {i: c for i, c in enumerate(classes)}
             self.ort_session = ort_session
             self.backend = "onnx"
+            self.model_path = os.path.abspath(path)
+            self.last_error = None
             print(f"[GestureClassifier] ONNX model loaded from {path}")
             print(f"[GestureClassifier] {len(classes)} gestures: {classes}")
             return True
         except Exception as e:
+            self.last_error = str(e)
             print(f"[GestureClassifier] Error loading ONNX model: {e}")
             return False
 
@@ -320,6 +335,14 @@ class GestureClassifier:
                 ])
             else:
                 logits = self.ort_session.run(None, {input_meta.name: X})[0]
+
+            logits = np.asarray(logits, dtype=np.float32)
+            if logits.ndim != 2 or logits.shape != (2, len(self.categories)):
+                raise ValueError(
+                    f"ONNX output must have shape (2, {len(self.categories)}); got {logits.shape}"
+                )
+            if not np.isfinite(logits).all():
+                raise ValueError("ONNX output contains non-finite values")
 
             exp_logits = np.exp(logits - logits.max(axis=1, keepdims=True))
             probs = exp_logits / exp_logits.sum(axis=1, keepdims=True)

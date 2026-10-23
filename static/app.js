@@ -828,6 +828,56 @@ function updateHandState(handState, d) {
   const msg    = document.getElementById("signStateMsg");
   if (!signEl || !msg) return;
 
+  const gestureCandidate = d?.gesture_candidate_label || "";
+  const gesturePercent = Math.round((d?.gesture_candidate_confidence || 0) * 100);
+  const gestureStatus = d?.gesture_status || "";
+  if (handState !== "no_hand" && handState !== "recognised" && handState !== "pending") {
+    if (gestureCandidate && gestureStatus === "word_mode_required") {
+      signEl.textContent = gestureCandidate;
+      signEl.dataset.state = "low_confidence";
+      msg.textContent = `Possible word sign: ${gestureCandidate} (${gesturePercent}%). Switch to Word mode to recognize it.`;
+      msg.className = "sign-state-msg unclear";
+      return;
+    }
+    if (gestureCandidate && gestureStatus === "low_confidence") {
+      signEl.textContent = gestureCandidate;
+      signEl.dataset.state = "low_confidence";
+      msg.textContent = `Possible gesture: ${gestureCandidate} (${gesturePercent}%). Repeat the full movement to confirm.`;
+      msg.className = "sign-state-msg unclear";
+      return;
+    }
+    if (gestureStatus === "waiting_for_motion") {
+      signEl.textContent = "–";
+      signEl.dataset.state = "low_confidence";
+      msg.textContent = "Hand found. Move through the full gesture; holding a pose is not enough.";
+      msg.className = "sign-state-msg unclear";
+      return;
+    }
+    if (gestureStatus === "warming_up") {
+      signEl.textContent = "–";
+      signEl.dataset.state = "low_confidence";
+      msg.textContent = "Hand found. Keep the hand in view while the motion window fills.";
+      msg.className = "sign-state-msg unclear";
+      return;
+    }
+    if (gestureStatus === "no_gesture") {
+      signEl.textContent = "–";
+      signEl.dataset.state = "low_confidence";
+      msg.textContent = "No moving gesture matched. Hold a sign through its complete movement; this model does not classify a still hand pose.";
+      msg.className = "sign-state-msg unclear";
+      return;
+    }
+    if (gestureStatus === "motion_check_rejected") {
+      signEl.textContent = gestureCandidate || "–";
+      signEl.dataset.state = "low_confidence";
+      msg.textContent = gestureCandidate
+        ? `Possible ${gestureCandidate} (${gesturePercent}%), but its motion path did not pass the check. Repeat the complete movement with your hand visible.`
+        : "No gesture label matched the motion path. Repeat the complete movement with your hand visible.";
+      msg.className = "sign-state-msg unclear";
+      return;
+    }
+  }
+
   if (handState === "low_confidence") {
     signEl.dataset.state = "low_confidence";
     // Show the raw static prediction even if below threshold — helps user orient hand

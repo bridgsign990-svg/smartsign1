@@ -1,0 +1,53 @@
+{
+  "raw_dataset_path": "data/msl_dataset/raw",
+  "processed_dataset_path": "data/msl_dataset/processed",
+  "manifests_path": "data/msl_dataset/manifests",
+  "review_path": "data/msl_dataset/review",
+  "holistic_model_path": "models/holistic_landmarker.task",
+  "sequence_length": 30,
+  "stride": 15,
+  "min_frames": 12,
+  "max_frames": 300,
+  "random_seed": 42,
+  "dataset_version": "0.1",
+  "quality_thresholds": {
+    "min_frames": 12,
+    "max_frames": 300,
+    "min_fps": 10,
+    "max_fps": 60,
+    "min_width": 320,
+    "min_height": 240
+  },
+  "collection_targets": {
+    "signers_per_sign": 5,
+    "recordings_per_signer_sign": 3
+  },
+  "allow_padding": true,
+  "allowed_video_extensions": [
+    "mp4",
+    "mov",
+    "avi",
+    "mkv",
+    "webm"
+  ],
+  "face_landmark_indices": [
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+    16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
+    30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43,
+    44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57,
+    58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71,
+    72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85,
+    86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99
+  ],
+  "normalization_method": "wrist_relative",
+  "train_signers": [],
+  "validation_signers": [],
+  "test_signers": [],
+  "feature_selection": {
+    "left_hand": true,
+    "right_hand": true,
+    "pose": true,
+    "face": true,
+    "pose_landmark_subset": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32]
+  }
+}

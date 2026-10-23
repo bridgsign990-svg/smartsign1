@@ -1,0 +1,11 @@
+{
+  "source_url": "https://storage.googleapis.com/mediapipe-models/holistic_landmarker/holistic_landmarker/float16/1/holistic_landmarker.task",
+  "official_documentation": "https://developers.google.com/edge/mediapipe/solutions/vision/holistic_landmarker",
+  "filename": "holistic_landmarker.task",
+  "size_bytes": 13683609,
+  "sha256": "E2DAB61191E2DCD0A15F943D8E3ED1DCE13C82DFA597B9DD39F562975A50C3F8",
+  "mediapipe_version": "0.10.33",
+  "configuration_key": "holistic_model_path",
+  "configured_path": "models/holistic_landmarker.task",
+  "downloaded_at": "2026-10-06"
+}

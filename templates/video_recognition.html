@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Video Sign Recognition · BridgeSign</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
+  <style>
+    .video-recognition-page { max-width: 980px; margin: 0 auto; padding: 28px 24px 56px; }
+    .video-recognition-page h1 { font-family:'Playfair Display',serif; color:var(--earth); }
+    .video-recognition-card, .video-result-card {
+      background:rgba(245,240,232,.92); border:1px solid rgba(192,83,58,.16);
+      border-radius:24px; padding:24px; box-shadow:0 8px 28px rgba(61,43,31,.08);
+    }
+    .video-recognition-notice { color:var(--earth-mid); line-height:1.6; }
+    .video-recognition-form { display:flex; align-items:center; flex-wrap:wrap; gap:14px; margin-top:20px; }
+    .video-recognition-form input { max-width:100%; }
+    .video-recognition-status { min-height:1.5em; margin-top:14px; color:var(--earth-mid); }
+    .video-recognition-status[data-state="error"] { color:var(--terra-dark); }
+    .video-recognition-status[data-state="success"] { color:var(--sage); }
+    .video-predictions { display:grid; gap:10px; margin-top:16px; }
+    .video-prediction { display:flex; justify-content:space-between; gap:14px; border-bottom:1px solid var(--cream-deep); padding:8px 0; }
+    .video-vocabulary { max-height:360px; overflow:auto; columns:3; padding-left:24px; }
+    .video-vocabulary li { break-inside:avoid; padding:2px 0; }
+    .video-back-link { color:var(--terracotta); font-weight:700; text-decoration:none; }
+    .video-back-link:hover { text-decoration:underline; }
+    @media(max-width:640px) {
+      .video-recognition-page { padding:18px 14px 40px; }
+      .video-vocabulary { columns:2; }
+      .video-recognition-form { align-items:stretch; flex-direction:column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-blob blob-1"></div>
+  <div class="bg-blob blob-2"></div>
+  <main class="video-recognition-page">
+    <p><a class="video-back-link" href="{{ url_for('index') }}">← Back to BridgeSign</a></p>
+    <p class="card-eyebrow">Experimental · prerecorded clips</p>
+    <h1>Video Sign Recognition</h1>
+    <section class="video-recognition-card">
+      <p class="video-recognition-notice">
+        Upload one short clip containing an isolated sign. This model predicts among
+        2,000 WLASL American Sign Language gloss labels. It does not translate continuous
+        signing into English sentences and is not validated for Malawian Sign Language.
+        Scores are model outputs, not calibrated guarantees of correctness.
+      </p>
+      <p class="video-recognition-notice">
+        Supported formats: {{ supported_extensions|join(', ') }}.
+        Maximum upload: {{ max_upload_mb }} MB; maximum clip duration: {{ max_video_seconds }} seconds.
+      </p>
+      {% if not model_available %}
+        <p class="video-recognition-status" data-state="error">
+          The isolated model runtime is not installed. Run
+          <code>.\tools\install_video_recognition.ps1</code>, then restart BridgeSign.
+        </p>
+      {% endif %}
+      {% if vocabulary_error %}
+        <p class="video-recognition-status" data-state="error">{{ vocabulary_error }}</p>
+      {% endif %}
+      <form id="videoRecognitionForm" class="video-recognition-form">
+        <label for="videoRecognitionFile">Choose an isolated sign video</label>
+        <input
+          id="videoRecognitionFile"
+          name="video"
+          type="file"
+          accept="{{ supported_extensions|join(',') }}"
+          required
+          {% if not model_available %}disabled{% endif %}
+        />
+        <button id="videoRecognitionSubmit" class="action-btn start-btn" type="submit" {% if not model_available %}disabled{% endif %}>
+          Analyze video
+        </button>
+      </form>
+      <div id="videoRecognitionStatus" class="video-recognition-status" role="status" aria-live="polite"></div>
+    </section>
+
+    <section id="videoRecognitionResults" class="video-result-card" hidden aria-live="polite">
+      <h2>Model predictions</h2>
+      <p id="videoRecognitionModel" class="video-recognition-notice"></p>
+      <div id="videoRecognitionPredictions" class="video-predictions"></div>
+      <p class="video-recognition-notice">
+        These ranked isolated-sign guesses are not a sentence translation.
+      </p>
+    </section>
+
+    <details class="video-recognition-card" style="margin-top:20px">
+      <summary>Supported vocabulary ({{ supported_vocabulary|length }} WLASL labels)</summary>
+      {% if supported_vocabulary %}
+        <ol class="video-vocabulary">
+          {% for label in supported_vocabulary %}<li>{{ label }}</li>{% endfor %}
+        </ol>
+      {% else %}
+        <p class="video-recognition-notice">Vocabulary is unavailable until its model metadata is restored.</p>
+      {% endif %}
+    </details>
+  </main>
+  <script src="{{ url_for('static', filename='video_recognition.js') }}" defer></script>
+</body>
+</html>

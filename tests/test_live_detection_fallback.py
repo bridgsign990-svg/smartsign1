@@ -25,6 +25,8 @@ class TestLiveDetectionFallback(unittest.TestCase):
 
     def test_plausible_low_confidence_candidate_is_kept(self):
         class LowConfidenceClassifier:
+            pipeline = object()
+
             def predict(self, features):
                 return "A", 0.06
 

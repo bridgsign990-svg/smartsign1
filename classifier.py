@@ -11,7 +11,7 @@ import pickle
 from collections import OrderedDict
 import numpy as np
 import config
-from model_artifacts import is_git_lfs_pointer
+from model_artifacts import is_git_lfs_pointer, check_against_manifest
 
 
 class Classifier:
@@ -20,6 +20,9 @@ class Classifier:
         self.categories = {}   # {0: 'A', 1: 'B', …}
         self.n_features_in_ = None
         self.last_error = None
+        self.model_path = None
+        self.manifest_entry = None
+        self.artifact_warnings = []
         self._predict_cache = OrderedDict()
         self._cache_size = int(getattr(config, "CLASSIFIER_CACHE_SIZE", 2048))
         self._cache_decimals = int(getattr(config, "CLASSIFIER_CACHE_DECIMALS", 2))
@@ -74,13 +77,24 @@ class Classifier:
             if not isinstance(classes_list, list) or not classes_list:
                 raise ValueError(f"Unexpected model payload in {path}: invalid classes list")
 
+            n_features = getattr(pipeline, "n_features_in_", None)
+            errors, warnings, entry = check_against_manifest(path, classes_list, n_features)
+            if errors:
+                raise ValueError("; ".join(errors))
+
             self.pipeline = pipeline
             self.categories = {i: c for i, c in enumerate(classes_list)}
-            self.n_features_in_ = getattr(self.pipeline, "n_features_in_", None)
+            self.n_features_in_ = n_features
+            self.model_path = path
+            self.manifest_entry = entry
+            self.artifact_warnings = warnings
+            self._predict_cache.clear()
             self._force_single_thread_inference()
             self.last_error = None
 
             print(f"[Classifier] Model loaded from {path}")
+            for warning in warnings:
+                print(f"[Classifier] Warning: {warning}")
             print(f"[Classifier] {len(self.categories)} classes: {classes_list}")
             return True
 

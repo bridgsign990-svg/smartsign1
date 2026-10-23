@@ -1,0 +1,164 @@
+{
+  "generated": "2026-10-23",
+  "artifacts": {
+    "sign_model_light.pkl": {
+      "family": "static_letters",
+      "status": "production",
+      "sha256": "b85687167d57575207c6b3857e06ba54ab857475dc86fbd4ac2a67ca81abe94a",
+      "size_bytes": 28573851,
+      "labels": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "J",
+        "K",
+        "L",
+        "M",
+        "N",
+        "O",
+        "P",
+        "Q",
+        "R",
+        "S",
+        "T",
+        "U",
+        "V",
+        "W",
+        "X",
+        "Y",
+        "Z"
+      ],
+      "n_features": 42
+    },
+    "sign_model_v2.pkl": {
+      "family": "static_letters",
+      "status": "fallback",
+      "note": "Interim one-signer/session candidate; loaded only when the production model is missing.",
+      "sha256": "656a5e53f528c12ff8b8b5bdaa76dbb055e6c6065ef9c6d3fccf4e123055efc9",
+      "size_bytes": 15118731,
+      "labels": [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E",
+        "F",
+        "G",
+        "H",
+        "I",
+        "K",
+        "L",
+        "M",
+        "N",
+        "O",
+        "P",
+        "Q",
+        "R",
+        "S",
+        "T",
+        "U",
+        "V",
+        "W",
+        "X",
+        "Y"
+      ],
+      "n_features": 42
+    },
+    "gesture_lstm_v2.onnx": {
+      "family": "motion_gestures",
+      "status": "production",
+      "sha256": "cfcdbca3611139a2d3cb90bd56429e35a0ebd4dca9d2938256f61f996ca58fd1",
+      "size_bytes": 272003,
+      "input_shape": [
+        "batch_size",
+        "sequence_length",
+        42
+      ],
+      "n_features": 42,
+      "labels": [
+        "AGAIN",
+        "AMBULANCE",
+        "ANGRY",
+        "DANGER",
+        "DOCTOR",
+        "EMERGENCY",
+        "FIRE",
+        "FOOD",
+        "GOODBYE",
+        "HELLO",
+        "HELP",
+        "HOSPITAL",
+        "J",
+        "NO",
+        "PLEASE",
+        "SORRY",
+        "STATIC",
+        "STOP",
+        "THANK_YOU",
+        "WATER",
+        "YES",
+        "Z"
+      ],
+      "evaluation": {
+        "best_val_accuracy": 0.9786931818181818,
+        "validation_split_basis": "exact-duplicate-only",
+        "validation_is_signer_independent": false
+      }
+    },
+    "gesture_lstm.onnx": {
+      "family": "motion_gestures",
+      "status": "fallback",
+      "sha256": "825ba6376c65f376944c92856b837f33853fa8abac3fdb97ce8425bb2a23fd0e",
+      "size_bytes": 270587,
+      "input_shape": [
+        "batch_size",
+        "sequence_length",
+        42
+      ],
+      "n_features": 42,
+      "labels": [
+        "GOODBYE",
+        "HELLO",
+        "HELP",
+        "J",
+        "NO",
+        "PLEASE",
+        "SORRY",
+        "STATIC",
+        "STOP",
+        "THANK_YOU",
+        "WATER",
+        "YES",
+        "Z"
+      ],
+      "evaluation": {
+        "best_val_accuracy": 0.9942307692307693
+      }
+    },
+    "hand_landmarker.task": {
+      "family": "mediapipe_hand",
+      "status": "production",
+      "sha256": "fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1",
+      "size_bytes": 7819105
+    },
+    "pose_landmarker_lite.task": {
+      "family": "mediapipe_pose",
+      "status": "production",
+      "sha256": "59929e1d1ee95287735ddd833b19cf4ac46d29bc7afddbbf6753c459690d574a",
+      "size_bytes": 5777746
+    },
+    "holistic_landmarker.task": {
+      "family": "mediapipe_holistic",
+      "status": "production",
+      "note": "Used by the MSL dataset pipeline (tools/msl_dataset), not the live camera path.",
+      "sha256": "e2dab61191e2dcd0a15f943d8e3ed1dce13c82dfa597b9dd39f562975a50c3f8",
+      "size_bytes": 13683609
+    }
+  }
+}

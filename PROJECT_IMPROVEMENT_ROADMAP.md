@@ -561,6 +561,33 @@ This closes the local inventory portion only. Phase 0 remains open: the
 additional collection sessions, current group-separated evaluation, live
 readiness capture, and applicable release checks are outstanding.
 
+**Engineering progress (2026-10-23, later):**
+
+- Restored `models/sign_model_light.pkl` and `models/holistic_landmarker.task`
+  from Git LFS; both had been dropped from this branch, which left live static
+  letters unavailable. Model loaders no longer delete unresolved LFS pointers;
+  they skip them and log `git lfs pull`.
+- Added `models/model_manifest.json` (written by
+  `tools/build_model_manifest.py`) recording role, SHA-256, size, labels, and
+  feature shape for each runtime artifact. The static classifier refuses an
+  artifact whose labels or feature count disagree with the manifest and
+  reports checksum differences as warnings; `/ready` now reports the static
+  artifact, checksum, manifest status, and warnings alongside the gesture
+  model's.
+- Live camera: the page's Letter/Word mode is sent with camera start and every
+  frame, so a stale server-side Word mode can no longer commit word gestures
+  while the page shows Letter mode. Letter mode shows the static best guess,
+  not word-gesture hints.
+- Added `.github/workflows/tests.yml` (LFS checkout, pointer check, test run)
+  and documented every runtime environment variable in `.env.example`.
+- Local result with the CI command: 179 passed, 2 skipped. Skipped by CI:
+  three torch-only training test modules and three avatar-report tests that
+  need a local CWASA render report.
+
+These are engineering and provenance changes. They do not change model
+accuracy; live recognition rates still need the planned collection sessions
+and a group-separated evaluation.
+
 **Exit gate:** collection data is intact, all artifacts are identified, and
 the app does not claim unsupported module readiness.
 

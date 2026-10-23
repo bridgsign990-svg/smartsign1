@@ -439,16 +439,16 @@ def ready():
             # Readiness should describe the loaded runtime even when optional
             # evaluation metadata is absent or malformed.
             gesture_evaluation = {"metadata_available": False}
-    gesture_sha256 = None
+    from model_artifacts import check_against_manifest, sha256_file
+
+    gesture_sha256 = sha256_file(gesture_path) if gesture_path else None
+    static_path = getattr(_classifier, "model_path", None) if model_loaded else None
+    static_entry = getattr(_classifier, "manifest_entry", None) or {}
+    gesture_manifest_errors, gesture_manifest_warnings, gesture_entry = ([], [], None)
     if gesture_path:
-        try:
-            digest = hashlib.sha256()
-            with open(gesture_path, "rb") as artifact:
-                for chunk in iter(lambda: artifact.read(1024 * 1024), b""):
-                    digest.update(chunk)
-            gesture_sha256 = digest.hexdigest()
-        except OSError:
-            pass
+        gesture_manifest_errors, gesture_manifest_warnings, gesture_entry = check_against_manifest(
+            gesture_path, labels=None, n_features=None
+        )
     try:
         from video_recognition import is_runtime_configured
         video_worker_ready = bool(is_runtime_configured())
@@ -461,6 +461,10 @@ def ready():
             "ready": model_loaded,
             "feature_extractor_ready": extractor_loaded,
             "labels": list(getattr(_classifier, "categories", {}).values()) if _classifier else [],
+            "artifact": static_path,
+            "sha256": sha256_file(static_path) if static_path else None,
+            "manifest_status": static_entry.get("status"),
+            "warnings": list(getattr(_classifier, "artifact_warnings", []) or []),
             "error": _module_errors.get("static_classifier"),
         },
         "gesture_model": {
@@ -471,6 +475,8 @@ def ready():
             "sha256": gesture_sha256,
             "labels": sorted(_available_gesture_labels()),
             "evaluation": gesture_evaluation,
+            "manifest_status": (gesture_entry or {}).get("status"),
+            "warnings": gesture_manifest_errors + gesture_manifest_warnings,
             "error": getattr(_gesture_classifier, "last_error", None),
         },
         "video_worker": {"ready": video_worker_ready},

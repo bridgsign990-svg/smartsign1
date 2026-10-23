@@ -1,0 +1,47 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true  # model artifacts are stored in Git LFS
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      # torch is only needed for training scripts; the app runs ONNX models.
+      - name: Install dependencies
+        run: |
+          grep -v -e '^torch' -e 'extra-index-url' requirements.txt > requirements-ci.txt
+          pip install -r requirements-ci.txt pytest
+
+      - name: Check model artifacts are real files, not LFS pointers
+        run: |
+          for f in models/*.pkl models/*.onnx models/*.task; do
+            if head -c 40 "$f" | grep -q "git-lfs.github.com"; then
+              echo "::error file=$f::unresolved Git LFS pointer"; exit 1
+            fi
+          done
+
+      # Skipped: modules that import torch (training only), and avatar-report
+      # tests that need a local CWASA browser-render report.
+      - name: Run tests
+        env:
+          BRIDGESIGN_WARM_INFERENCE: "0"
+        run: >
+          python -m pytest tests -q
+          --ignore=tests/test_gesture_dataset.py
+          --ignore=tests/test_wlasl_experiment.py
+          --ignore=tests/test_wlasl_v2.py
+          --deselect tests/test_avatar_content.py::TestAvatarContent::test_content_capabilities_and_validation_are_independent
+          --deselect tests/test_avatar_content.py::TestAvatarContent::test_gap_report_separates_completeness_from_validation_and_recognition
+          --deselect tests/test_avatar_content.py::TestAvatarContent::test_report_covers_mapping_and_honestly_separates_render_from_review

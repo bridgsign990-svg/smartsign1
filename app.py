@@ -2103,6 +2103,7 @@ def sentence_suggest():
     return jsonify({
         "suggestions": suggestions,
         "brain_available": brain.is_available(),
+        "brain_error": None if brain.is_available() else brain.last_error,
         "server_timing_ms": _perf_ms(started),
     })
 

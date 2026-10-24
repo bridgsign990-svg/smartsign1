@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="/static/icon-192.png"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Lato:wght@300;400;700&family=Caveat:wght@500;700&display=swap"/>
-<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=sentence-brain-v1"/>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=sentence-brain-v2"/>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <!-- Three.js Import Map (served locally so the avatar does not depend on CDNs) -->
 <script type="importmap">
@@ -763,8 +763,8 @@
 <script src="{{ url_for('static', filename='avatar/avatar_driver.js') }}?v=cwasa-asl-dict-20260521"></script>
 <script src="{{ url_for('static', filename='performance-config.js') }}?v=gesture-stream-20261023"></script>
 <script>window.BRIDGESIGN_IMAGE_MAX_UPLOAD_BYTES = {{ image_max_upload_bytes|tojson }};</script>
-<script src="{{ url_for('static', filename='app.js') }}?v=sentence-brain-v1"></script>
-<script src="{{ url_for('static', filename='sentence.js') }}?v=sentence-brain-v1"></script>
+<script src="{{ url_for('static', filename='app.js') }}?v=sentence-brain-v2"></script>
+<script src="{{ url_for('static', filename='sentence.js') }}?v=sentence-brain-v2"></script>
 <script src="{{ url_for('static', filename='learning.js') }}?v=learning-engine-20261001"></script>
 <script src="{{ url_for('static', filename='video_ingest.js') }}?v=static-video-20261005"></script>
 <script>lucide.createIcons();</script>

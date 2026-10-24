@@ -1,3 +1,5 @@
+import os
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -100,6 +102,35 @@ class TestSentenceBrain(unittest.TestCase):
 
         texts = [c["text"] for c in Confident().suggest(["ME", "NEED", "HELP"])]
         self.assertEqual(texts, ["I need help."])
+
+
+class TestSentenceBrainSetupMessages(unittest.TestCase):
+    """A tester on a new PC should be told exactly what to fix."""
+
+    def test_missing_model_folder_points_to_version_4(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            brain = SentenceBrain(os.path.join(tmp, "sentence_brain"))
+        self.assertFalse(brain.is_available())
+        self.assertIn("version-4", brain.last_error)
+        self.assertIn("not a ZIP", brain.last_error)
+
+    def test_lfs_placeholder_points_to_git_lfs_pull(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            for name in ("encoder.onnx", "decoder.onnx", "tokenizer.json", "meta.json"):
+                with open(os.path.join(tmp, name), "w", encoding="ascii") as f:
+                    f.write("version https://git-lfs.github.com/spec/v1\noid sha256:" + "0" * 64 + "\nsize 1\n")
+            brain = SentenceBrain(tmp)
+        self.assertFalse(brain.is_available())
+        self.assertIn("git lfs pull", brain.last_error)
+
+    def test_suggest_reports_the_problem_to_the_page(self):
+        client = app.app.test_client()
+        with client.session_transaction() as session:
+            session["username"] = "sentence_tester"
+        with patch("sentence_brain._brain", _NoModelBrain()):
+            data = client.post("/api/sentence/suggest", json={"signs": ["ME"]}).get_json()
+        self.assertFalse(data["brain_available"])
+        self.assertEqual(data["brain_error"], "test: no model")
 
 
 class TestRealSentenceModel(unittest.TestCase):

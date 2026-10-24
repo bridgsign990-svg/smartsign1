@@ -50,7 +50,33 @@ class SentenceBrain:
 
     # ── Loading ───────────────────────────────────────────────────────────
 
+    def _setup_problem(self):
+        """Explain the common setup mistakes in words a tester can act on."""
+        from model_artifacts import is_git_lfs_pointer
+
+        if not os.path.isdir(self.model_dir):
+            return (f"{self.model_dir} is missing. The sentence model is on the version-4 branch: "
+                    "clone the repository with git (not a ZIP download) and run `git checkout version-4`.")
+        for name in ("encoder.onnx", "decoder.onnx", "tokenizer.json", "meta.json"):
+            path = os.path.join(self.model_dir, name)
+            if not os.path.isfile(path):
+                return f"{name} is missing from {self.model_dir}. Run `git checkout version-4` and `git lfs pull`."
+            if is_git_lfs_pointer(path):
+                return (f"{name} is a Git LFS placeholder, not the model. Install Git LFS, then run "
+                        "`git lfs install` and `git lfs pull` (ZIP downloads never include the model).")
+        try:
+            import onnxruntime  # noqa: F401
+            import tokenizers  # noqa: F401
+        except ImportError as error:
+            return f"Python package missing ({error.name}). Run `pip install -r requirements.txt`."
+        return None
+
     def _load(self):
+        problem = self._setup_problem()
+        if problem:
+            self.last_error = problem
+            print(f"[SentenceBrain] Model unavailable: {problem} Using literal readings.")
+            return
         try:
             import onnxruntime as ort
             from tokenizers import Tokenizer

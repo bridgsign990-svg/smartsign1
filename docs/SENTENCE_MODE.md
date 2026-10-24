@@ -8,6 +8,37 @@ them into English sentence suggestions; the signer taps the one they meant and
 it is shown in large text and spoken aloud. The other person replies by voice,
 typing, or quick replies, and their words appear in large text for the signer.
 
+## Setting up on another PC
+
+The sentence model only exists on the `version-4` branch, and its files are
+stored with Git LFS. A ZIP download from GitHub (a folder named like
+`smartsign1-main`) has neither, so clone with git:
+
+```bash
+git lfs install
+git clone -b version-4 https://github.com/bridgsign990-svg/smartsign1
+cd smartsign1
+git lfs pull
+pip install -r requirements.txt
+python app.py
+```
+
+Already have a clone on another branch?
+
+```bash
+git fetch origin
+git checkout version-4
+git pull
+git lfs pull
+pip install -r requirements.txt
+```
+
+Check it worked: the startup log prints
+`[SentenceBrain] Loaded local model from ...models/sentence_brain`, and
+`models/sentence_brain/decoder.onnx` is about 58 MB (a 133-byte file is an LFS
+placeholder). If the model cannot load, Sentence mode still works with a
+literal reading of the signs and shows what to fix under the suggestions.
+
 ## How it works
 
 ```
@@ -140,12 +171,15 @@ always future tense ("When will…"); the first model predates this fix.
 
 ### Retraining on a faster PC
 
-Training is not tied to one machine. With an NVIDIA GPU it takes roughly
-10 minutes:
+Training is not tied to one machine, and the app never needs retraining just
+to run — the trained model is committed. Retrain only after changing the
+vocabulary or generator. On a CPU it takes about 1–2 hours (faster with more
+cores and nothing else running); with an NVIDIA GPU and CUDA PyTorch, roughly
+10 minutes.
 
 ```bash
-# CUDA PyTorch first (pick the command for your CUDA version at pytorch.org)
-pip install torch --index-url https://download.pytorch.org/whl/cu124
+# NVIDIA GPU only: install CUDA PyTorch first (command for your CUDA version at pytorch.org)
+# pip install torch --index-url https://download.pytorch.org/whl/cu124
 pip install -r requirements-train.txt
 python tools/sentence_brain/build_pairs.py --aslg 6000   # downloads ASLG-PC12 if missing
 python tools/sentence_brain/train.py                     # uses the GPU automatically

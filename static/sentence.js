@@ -70,7 +70,7 @@
       const glosses = new Set(Object.values(groups).flat());
       state.vocab = { groups, glosses };
       state.activeGroup = Object.keys(state.vocab.groups)[0] || "";
-      setBrainStatus(data.brain_available);
+      setBrainStatus(data.brain_available, null, data.brain_error);
       renderPicker();
     } catch (error) {
       state.vocabPromise = null;  // allow a retry
@@ -78,12 +78,12 @@
     }
   }
 
-  function setBrainStatus(available, message) {
+  function setBrainStatus(available, message, problem) {
     const status = $("sentBrainStatus");
     if (!status) return;
     status.textContent = message || (available
       ? "Suggestions come from the local sentence model on this server. Check before sending."
-      : "Sentence model not installed – showing a literal reading of the signs.");
+      : "Sentence model not loaded – showing a literal reading of the signs." + (problem ? " " + problem : ""));
   }
 
   function renderPicker() {
@@ -239,7 +239,7 @@
       const data = await res.json();
       if (seq !== state.suggestSeq) return;  // a newer request superseded this one
       if (!res.ok) throw new Error(data.error || "Suggestion request failed");
-      setBrainStatus(data.brain_available);
+      setBrainStatus(data.brain_available, null, data.brain_error);
       renderSuggestions(data.suggestions || []);
     } catch (error) {
       if (seq === state.suggestSeq) {
